@@ -22,6 +22,7 @@ def standardize(X):
 
 
 def select_features(X, n=30):
+    print("Select features with PCA: n=%d" % n)
     pca = PCA(n_components=n)
     pca.fit(standardize(X))
     n_pcs = pca.components_.shape[0]
@@ -31,6 +32,7 @@ def select_features(X, n=30):
 
 
 def select_topN_herros(X, Y, n=30):
+    print("Select features with top hero: n=%d" % n)
     heros = X[:,
             3:]  # indicator for a hero, Value of 1 indicates that a player from team '1' played as that hero and '-1' for the other team
 
@@ -49,25 +51,36 @@ def select_topN_herros(X, Y, n=30):
 
 
 def train_on_NN():
-    print("train on NN with hidden layer (50, 15) alpha=0.1")
     from sklearn.neural_network import MLPClassifier
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    hidden_layers = (50, 30, 15, 5)
+    alpha = 0.1
+    print("train on NN with hidden layer %s alpha=%f" % (hidden_layers, alpha))
     print("Start: %s" % datetime.datetime.now().ctime())
-    clf = MLPClassifier(alpha=0.1, hidden_layer_sizes=(50, 15), random_state=1, max_iter=100000)
-    res = cross_val_score(clf, X_train, Y_train, cv=10)
+    selected_train = select_features(X_train, n=100)
+    clf = make_pipeline(StandardScaler(),
+                        MLPClassifier(alpha=alpha, hidden_layer_sizes=(50, 30, 15, 5), random_state=1, max_iter=10000))
+    res = cross_val_score(clf, selected_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
     print(res)
 
+    return np.mean(res)
+
 
 def train_on_RF():
-    print("selected feature")
+    print("selected feature with PCA")
 
-    selected_train = select_topN_herros(X_train, Y_train, n=100)
+    selected_train = select_features(X_train, n=100)
     print(selected_train.shape)
     print("Start: %s" % datetime.datetime.now().ctime())
     clf = RandomForestClassifier(random_state=0)
     res = cross_val_score(clf, selected_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
     print(res)
+
+    return np.mean(res)
 
 
 def train_on_SVM():
@@ -76,11 +89,13 @@ def train_on_SVM():
     from sklearn.preprocessing import StandardScaler
     print("train on SVM")
     print("Start: %s" % datetime.datetime.now().ctime())
-    clf = make_pipeline(StandardScaler(), LinearSVC(random_state=0, tol=1e-5, max_iter=100000))
+    clf = make_pipeline(StandardScaler(), LinearSVC(random_state=0, tol=1e-5, max_iter=10000))
     res = cross_val_score(clf, X_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
     print(res)
 
+    return np.mean(res)
+
 
 if __name__ == '__main__':
-    train_on_SVM()
+    train_on_NN()
