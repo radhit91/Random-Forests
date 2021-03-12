@@ -77,18 +77,29 @@ def train_on_NN(hidden_layers=(50,), alpha=0.1, selected=False):
     return np.mean(scores), test_score
 
 
-def train_on_RF():
-    print("Train on RF")
-    selected_train, idx = select_features(X_train, n=100)
+def train_on_RF_train():
+    print("selected feature")
+
+    selected_train = select_features(X_train, n=100)
     print(selected_train.shape)
     print("Start: %s" % datetime.datetime.now().ctime())
     clf = RandomForestClassifier(random_state=0)
-    scores = cross_val_score(clf, selected_train, Y_train, cv=10)
+    res = cross_val_score(clf, selected_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
-    print(scores)
+    print(res)
+    return np.mean(res)
+    
+def train_on_RF_test():
+    print("selected feature")
 
-    return np.mean(scores)
-
+    selected_test = select_features(X_test, n=100)
+    print(selected_test.shape)
+    print("Start: %s" % datetime.datetime.now().ctime())
+    clf = RandomForestClassifier(random_state=0)
+    res = cross_val_score(clf, selected_test, Y_test, cv=10)
+    print("Finish: %s" % datetime.datetime.now().ctime())
+    print(res)
+    return np.mean(res)
 
 def train_on_SVM():
     from sklearn.svm import LinearSVC
