@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import cross_val_score
 
 np.random.seed(1)
@@ -70,7 +71,8 @@ def train_on_NN(hidden_layers=(50,), alpha=0.1, selected=False):
     print(scores)
 
     Y_hat = clf.predict(X_test_data)
-    test_score = 1 - (np.count_nonzero(Y_hat - Y_test) / Y_test.shape[0])
+
+    test_score = accuracy_score(Y_test, Y_hat)
     print("Test: %f" % test_score)
     return np.mean(scores), test_score
 
