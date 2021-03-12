@@ -1,5 +1,6 @@
 import datetime
 
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
@@ -27,8 +28,9 @@ def select_features(X, n=30):
     pca.fit(standardize(X))
     n_pcs = pca.components_.shape[0]
     most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
+    most_important = np.unique(most_important)
     print(most_important)
-    return X[:, np.unique(most_important)]
+    return X[:, most_important], most_important
 
 
 def select_topN_herros(X, Y, n=30):
@@ -50,37 +52,40 @@ def select_topN_herros(X, Y, n=30):
     return np.concatenate((X_train[:, :3], X_train[:, np.array(idx) + 3]), axis=1)
 
 
-def train_on_NN():
+def train_on_NN(hidden_layers=(50,), alpha=0.1, selected=False):
     from sklearn.neural_network import MLPClassifier
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
 
-    hidden_layers = (50, 30, 15, 5)
-    alpha = 0.1
     print("train on NN with hidden layer %s alpha=%f" % (hidden_layers, alpha))
     print("Start: %s" % datetime.datetime.now().ctime())
-    selected_train = select_features(X_train, n=100)
-    clf = make_pipeline(StandardScaler(),
-                        MLPClassifier(alpha=alpha, hidden_layer_sizes=(50, 30, 15, 5), random_state=1, max_iter=10000))
-    res = cross_val_score(clf, selected_train, Y_train, cv=10)
+    X = X_train
+    X_test_data = X_test
+    if selected:
+        X, idx = select_features(X_train, n=100)
+        X_test_data = X_test[:, idx]
+    print(X.shape)
+    clf = MLPClassifier(alpha=alpha, hidden_layer_sizes=hidden_layers, random_state=1, max_iter=10000)
+    clf.fit(X, Y_train)
+    scores = cross_val_score(clf, X, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
-    print(res)
+    print(scores)
 
-    return np.mean(res)
+    Y_hat = clf.predict(X_test_data)
+    test_score = 1 - (np.count_nonzero(Y_hat - Y_test) / Y_test.shape[0])
+    print("Test: %f" % test_score)
+    return np.mean(scores), test_score
 
 
 def train_on_RF():
-    print("selected feature with PCA")
-
-    selected_train = select_features(X_train, n=100)
+    print("Train on RF")
+    selected_train, idx = select_features(X_train, n=100)
     print(selected_train.shape)
     print("Start: %s" % datetime.datetime.now().ctime())
     clf = RandomForestClassifier(random_state=0)
-    res = cross_val_score(clf, selected_train, Y_train, cv=10)
+    scores = cross_val_score(clf, selected_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
-    print(res)
+    print(scores)
 
-    return np.mean(res)
+    return np.mean(scores)
 
 
 def train_on_SVM():
@@ -90,12 +95,29 @@ def train_on_SVM():
     print("train on SVM")
     print("Start: %s" % datetime.datetime.now().ctime())
     clf = make_pipeline(StandardScaler(), LinearSVC(random_state=0, tol=1e-5, max_iter=10000))
-    res = cross_val_score(clf, X_train, Y_train, cv=10)
+    scores = cross_val_score(clf, X_train, Y_train, cv=10)
     print("Finish: %s" % datetime.datetime.now().ctime())
-    print(res)
+    print(scores)
 
-    return np.mean(res)
+    return np.mean(scores)
 
 
 if __name__ == '__main__':
-    train_on_NN()
+    res = []
+    layer_configs = [(30,), (50,), (100,), (200,), (50, 15), (100, 30), (200, 50), (200, 100), (300, 100)]
+    for config in layer_configs:
+        cross_score, test_score = train_on_NN(hidden_layers=config, alpha=1, selected=True)
+        print("score: %s, %s" % (cross_score, test_score))
+        res.append(cross_score)
+    # alpha = [0.1, 0.3, 0.5, 1, 2, 3, 4]
+    # train_on_NN()
+    # for a in alpha:
+    #     res.append(train_on_NN(hidden_layers=(50, 15), alpha=a))
+    print("=======Results=========")
+    print(res)
+
+    plt.plot(res, '-o')
+    plt.ylabel("Accuracy")
+    plt.xlabel("Hidder layer")
+    plt.title("Neural Network with selected features")
+    plt.show()
